@@ -5,7 +5,7 @@
   "author": "Mateusz Woźniak <matisiek11@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "format": "prettier --write \"**/*.ts\"",
+    "lint": "tslint -c tslint.json 'src/**/*.ts'",
     "start": "ts-node -r tsconfig-paths/register src/main.ts",
     "start:dev": "nodemon",
     "prestart:prod": "rm -rf dist && tsc",
