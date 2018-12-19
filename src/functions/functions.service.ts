@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Invocation } from './models/invocation.model';
 import { join } from 'path';
-import { App } from './models/App.model';
 import { readdirSync } from 'fs';
+import { Model } from 'mongoose';
+import { FunctionInterface } from './schemas/function.schema';
+import { Invocation } from './models/invocation.model';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class FunctionsService {
+
+	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>) { }
 
 	private funcs: object = {};
 
@@ -13,6 +17,7 @@ export class FunctionsService {
 		const appsDir = join(process.cwd(), process.env.APPS_DIR);
 		Logger.log(`Discovered functions dir: ${appsDir}`, 'Functions');
 		const appNames = readdirSync(appsDir);
+		const ids = [];
 		for (const appName of appNames) {
 			const revisionNames = readdirSync(join(appsDir, appName));
 			for (const revisionName of revisionNames) {
@@ -23,9 +28,26 @@ export class FunctionsService {
 					// @ts-ignore
 					this.funcs[appName][revisionName][key] = func.callback;
 					Logger.log(`Discovered func: ${key} bound to app: ${appName}`, `Functions`);
+					if ((await this.functionModel.countDocuments({
+						appName, name: key,
+					})) === 0) {
+						const f = new this.functionModel({
+							name: key,
+							revision: revisionName,
+							appName,
+						});
+						await f.save();
+						ids.push(f._id.toString());
+					} else {
+						const f = await this.functionModel.findOne({
+							appName, name: key,
+						});
+						ids.push(f._id.toString());
+					}
 				}
 			}
 		}
+		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
 	}
 
 	invoke(invocation: Invocation) {
