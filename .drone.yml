@@ -1,6 +1,13 @@
 pipeline:
-  build:
-    image: node
+  test:
+    image: node:${NODE_VERSION}
     commands:
       - yarn
       - yarn test
+
+matrix:
+  include:
+    - NODE_VERSION: 8
+    - NODE_VERSION: 9
+    - NODE_VERSION: 10
+    - NODE_VERSION: 11
