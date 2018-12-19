@@ -1,5 +1,7 @@
 language: node_js
 sudo: false
+services:
+  - docker
 node_js:
   - "8"
   - "9"
@@ -9,4 +11,17 @@ cache:
     - "node_modules"
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-script: yarn test:cov
+before_install:
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+script: true
+jobs:
+  include:
+    - stage: test
+      script: yarn test:cov
+    - stage: deploy
+      script:
+        - docker build -t enteam/enfunc:build-$TRAVIS_BUILD_ID .
+        - if [[ "$TRAVIS_BRANCH" == "master" ]]; then docker tag enteam/enfunc:build-$TRAVIS_BUILD_ID enteam/enfunc; fi
+        - docker push enteam/enfunc:build-$TRAVIS_BUILD_ID
+        - if [[ "$TRAVIS_BRANCH" == "master" ]]; then docker push enteam/enfunc; fi
+      if: type = push AND repo = enteam/enfunc
