@@ -3,6 +3,7 @@ sudo: false
 services:
   - docker
 node_js:
+  - "8"
   - "9"
   - "10"
 cache:
@@ -15,8 +16,6 @@ before_install:
 script: true
 jobs:
   include:
-    - stage: test
-      script: yarn test:cov
     - stage: deploy
       script:
         - docker build -t enteam/enfunc:build-$TRAVIS_BUILD_ID .
