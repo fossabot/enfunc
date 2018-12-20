@@ -19,10 +19,6 @@
     "ordered-imports": [
       false
     ],
-    "max-line-length": [
-      true,
-      150
-    ],
     "member-ordering": [
       false
     ],
@@ -49,7 +45,8 @@
     ],
     "one-variable-per-declaration": [
       false
-    ]
+    ],
+    "align": [false]
   },
   "rulesDirectory": []
 }

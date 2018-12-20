@@ -4,20 +4,33 @@ import { readdirSync } from 'fs';
 import { Model } from 'mongoose';
 import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, MongooseModule, InjectConnection } from '@nestjs/mongoose';
 import * as Redis from 'ioredis';
+import * as mongooseGridfs from 'mongoose-gridfs';
+import { Connection } from 'mongoose';
 
 @Injectable()
 export class FunctionsService {
 
-	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>) { }
+	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>,
+		@InjectConnection() private readonly connection: Connection) { }
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
+	private gridfs: any;
 
 	async onModuleInit() {
 		await this.connectToRedis();
+		await this.initGridfs();
 		await this.discoverFunctions();
+	}
+
+	private async initGridfs() {
+		this.gridfs = mongooseGridfs({
+			collection: 'revisions',
+			model: 'Revision',
+			mongooseConnection: this.connection,
+		});
 	}
 
 	private async connectToRedis() {
