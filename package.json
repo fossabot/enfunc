@@ -43,7 +43,7 @@
     "unzipper": "0.9.7"
   },
   "devDependencies": {
-    "@nestjs/testing": "5.0.0",
+    "@nestjs/testing": "5.5.0",
     "@types/express": "4.0.39",
     "@types/jest": "21.1.8",
     "@types/node": "9.3.0",
