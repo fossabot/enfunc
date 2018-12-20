@@ -51,7 +51,7 @@
     "jest": "21.2.1",
     "nodemon": "1.18.9",
     "prettier": "1.15.3",
-    "supertest": "3.0.0",
+    "supertest": "3.3.0",
     "ts-jest": "21.2.4",
     "ts-loader": "5.3.1",
     "ts-node": "4.1.0",
