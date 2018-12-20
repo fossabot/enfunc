@@ -23,14 +23,18 @@
     "@nestjs/mongoose": "^5.2.2",
     "@nestjs/websockets": "^5.5.0",
     "@types/ioredis": "^4.0.4",
+    "class-transformer": "^0.2.0",
+    "class-validator": "^0.9.1",
     "dotenv": "^6.2.0",
     "fastify-formbody": "^2.0.0",
+    "gridfs-stream": "^1.1.1",
     "ioredis": "^4.3.0",
     "mongo-gridfs": "^1.1.0",
     "mongoose": "^5.4.0",
     "mongoose-gridfs": "^0.5.0",
     "reflect-metadata": "^0.1.12",
     "rxjs": "^6.0.0",
+    "streamifier": "^0.1.1",
     "typescript": "^2.6.2"
   },
   "devDependencies": {

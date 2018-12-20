@@ -6,31 +6,23 @@ import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
 import { InjectModel, MongooseModule, InjectConnection } from '@nestjs/mongoose';
 import * as Redis from 'ioredis';
-import * as mongooseGridfs from 'mongoose-gridfs';
+import * as Grid from 'gridfs-stream';
 import { Connection } from 'mongoose';
+import { createReadStream } from 'streamifier';
+import { RevisionInterface } from './schemas/revision.schema';
 
 @Injectable()
 export class FunctionsService {
 
 	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>,
-		@InjectConnection() private readonly connection: Connection) { }
+		@InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>) { }
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
-	private gridfs: any;
 
 	async onModuleInit() {
 		await this.connectToRedis();
-		await this.initGridfs();
 		await this.discoverFunctions();
-	}
-
-	private async initGridfs() {
-		this.gridfs = mongooseGridfs({
-			collection: 'revisions',
-			model: 'Revision',
-			mongooseConnection: this.connection,
-		});
 	}
 
 	private async connectToRedis() {
@@ -76,6 +68,12 @@ export class FunctionsService {
 
 	invoke(invocation: Invocation) {
 		return this.funcs[invocation.app]['1'][invocation.func](invocation.request, invocation.response);
+	}
+
+	async upload(revision: RevisionInterface) {
+		const rev = new this.revisionModel(revision);
+		await rev.save();
+		return rev;
 	}
 
 }

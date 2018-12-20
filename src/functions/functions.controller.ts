@@ -1,6 +1,8 @@
-import { Controller, All, Param, Req, Res, Body } from '@nestjs/common';
+// tslint:disable-next-line:max-line-length
+import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile } from '@nestjs/common';
 import * as express from 'express';
 import { FunctionsService } from './functions.service';
+import { RevisionInterface } from './schemas/revision.schema';
 
 @Controller('functions')
 export class FunctionsController {
@@ -19,6 +21,12 @@ export class FunctionsController {
 			request: req,
 			response: res,
 		});
+	}
+
+	@Post('/upload/:app/:revision')
+	@UseInterceptors(FileInterceptor('file'))
+	async upload(@Body() revision: RevisionInterface) {
+		return await this.functionsService.upload(revision);
 	}
 
 }
