@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
 import { InjectModel } from '@nestjs/mongoose';
+import * as Redis from 'ioredis';
 
 @Injectable()
 export class FunctionsService {
@@ -12,8 +13,18 @@ export class FunctionsService {
 	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>) { }
 
 	private funcs: object = {};
+	private redis: Redis.Redis;
 
 	async onModuleInit() {
+		await this.connectToRedis();
+		await this.discoverFunctions();
+	}
+
+	private async connectToRedis() {
+		this.redis = new Redis(process.env.REDIS_URI);
+	}
+
+	private async discoverFunctions() {
 		const appsDir = join(process.cwd(), process.env.APPS_DIR);
 		Logger.log(`Discovered functions dir: ${appsDir}`, 'Functions');
 		const appNames = readdirSync(appsDir);

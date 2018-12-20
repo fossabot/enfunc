@@ -5,7 +5,9 @@ import { AppService } from './app.service';
 import { FunctionsModule } from './functions/functions.module';
 
 @Module({
-  imports: [MongooseModule.forRoot(process.env.MONGODB_URI), FunctionsModule],
+  imports: [MongooseModule.forRoot(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+  }), FunctionsModule],
   controllers: [AppController],
   providers: [AppService],
 })
