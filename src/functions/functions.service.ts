@@ -17,8 +17,9 @@ import { exec } from 'child_process';
 @Injectable()
 export class FunctionsService {
 
-	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>,
-		@InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>) { }
+	// @ts-ignore
+	// tslint:disable-next-line:max-line-length
+	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>) { }
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
@@ -116,7 +117,7 @@ export class FunctionsService {
 		return this.funcs[invocation.app]['1'][invocation.func](invocation.request, invocation.response);
 	}
 
-	async upload(revision: RevisionInterface) {
+	async synchronize(revision: RevisionInterface) {
 		if ((await this.revisionModel.countDocuments({
 			appName: revision.appName,
 			revision: revision.revision,
