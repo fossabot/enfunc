@@ -33,7 +33,7 @@
     "@types/jest": "^23.3.10",
     "@types/node": "^10.12.18",
     "@types/supertest": "^2.0.4",
-    "jest": "^21.2.1",
+    "jest": "^22.4.4",
     "nodemon": "^1.14.1",
     "prettier": "^1.11.1",
     "supertest": "^3.0.0",
