@@ -23,10 +23,19 @@ export class FunctionsController {
 		});
 	}
 
-	@Post('/upload/:app/:revision')
+	@Post('/upload')
 	@UseInterceptors(FileInterceptor('file'))
 	async upload(@Body() revision: RevisionInterface) {
 		return await this.functionsService.upload(revision);
+	}
+
+	@Post('/deploy')
+	async deploy() {
+		await this.functionsService.deploy();
+		return {
+			status: true,
+			message: 'Deployment has been started',
+		};
 	}
 
 }

@@ -1,15 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { join } from 'path';
-import { readdirSync } from 'fs';
+import { readdirSync, mkdirSync, createReadStream } from 'fs';
 import { Model } from 'mongoose';
 import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
-import { InjectModel, MongooseModule, InjectConnection } from '@nestjs/mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 import * as Redis from 'ioredis';
-import * as Grid from 'gridfs-stream';
-import { Connection } from 'mongoose';
-import { createReadStream } from 'streamifier';
 import { RevisionInterface } from './schemas/revision.schema';
+import { existsSync, createWriteStream } from 'fs';
+import { get } from 'http';
+import { tmpdir } from 'os';
+import { Extract } from 'unzipper';
+import * as fetch from 'download-file';
 
 @Injectable()
 export class FunctionsService {
@@ -19,25 +21,30 @@ export class FunctionsService {
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
+	private publisher: Redis.Redis;
+	private appsDir: string;
 
 	async onModuleInit() {
+		this.appsDir = join(process.cwd(), process.env.APPS_DIR);
+		Logger.log(`Discovered functions dir: ${this.appsDir}`, 'Functions');
 		await this.connectToRedis();
 		await this.discoverFunctions();
 	}
 
 	private async connectToRedis() {
 		this.redis = new Redis(process.env.REDIS_URI);
+		this.publisher = new Redis(process.env.REDIS_URI);
+		this.redis.on('message', () => this.download());
+		this.redis.subscribe('deployments', (err, count) => { });
 	}
 
 	private async discoverFunctions() {
-		const appsDir = join(process.cwd(), process.env.APPS_DIR);
-		Logger.log(`Discovered functions dir: ${appsDir}`, 'Functions');
-		const appNames = readdirSync(appsDir);
+		const appNames = readdirSync(this.appsDir);
 		const ids = [];
 		for (const appName of appNames) {
-			const revisionNames = readdirSync(join(appsDir, appName));
+			const revisionNames = readdirSync(join(this.appsDir, appName));
 			for (const revisionName of revisionNames) {
-				const appIndex = require(join(appsDir, appName, revisionName, 'src', 'index.js'));
+				const appIndex = require(join(this.appsDir, appName, revisionName, 'src', 'index.js'));
 				for (const [key, func] of Object.entries(appIndex)) {
 					if (this.funcs[appName] == null) this.funcs[appName] = {};
 					if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
@@ -66,14 +73,46 @@ export class FunctionsService {
 		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
 	}
 
+	private unzip(revision: RevisionInterface) {
+		return new Promise(resolve => {
+			mkdirSync(join(this.appsDir, revision.appName, revision.revision));
+			fetch(revision.url, {
+				directory: tmpdir(),
+				filename: `enfunc-rev-${revision.appName}-${revision.revision}.zip`,
+			}, (err) => {
+				createReadStream(join(tmpdir(), `enfunc-rev-${revision.appName}-${revision.revision}.zip`)).pipe(Extract({
+					path: join(this.appsDir, revision.appName, revision.revision),
+				})).promise().then(() => resolve());
+			});
+		});
+	}
+
+	private async download() {
+		Logger.log(`Starting deployment process`, 'Delivery');
+		for (const doc of (await this.revisionModel.find({}).exec())) {
+			const revision: RevisionInterface = doc;
+			if (!existsSync(join(this.appsDir, revision.appName))) mkdirSync(join(this.appsDir, revision.appName));
+			if (!existsSync(join(this.appsDir, revision.appName, revision.revision))) await this.unzip(revision);
+		}
+		await this.discoverFunctions();
+	}
+
 	invoke(invocation: Invocation) {
 		return this.funcs[invocation.app]['1'][invocation.func](invocation.request, invocation.response);
 	}
 
 	async upload(revision: RevisionInterface) {
+		if ((await this.revisionModel.countDocuments({
+			appName: revision.appName,
+			revision: revision.revision,
+		})) > 0) return { status: false, message: 'Deployment duplication detected' };
 		const rev = new this.revisionModel(revision);
 		await rev.save();
+		this.publisher.publish('deployments', '');
 		return rev;
 	}
 
+	async deploy() {
+		await this.discoverFunctions();
+	}
 }
