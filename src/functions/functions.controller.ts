@@ -17,7 +17,7 @@ export class FunctionsController {
 		@Body() body: object) {
 		return this.functionsService.invoke({
 			app, func, body,
-			requestId: '1234',
+			requestId: null,
 			request: req,
 			response: res,
 		});

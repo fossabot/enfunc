@@ -12,6 +12,7 @@ import { get } from 'http';
 import { tmpdir } from 'os';
 import { Extract } from 'unzipper';
 import * as fetch from 'download-file';
+import { exec } from 'child_process';
 
 @Injectable()
 export class FunctionsService {
@@ -50,7 +51,7 @@ export class FunctionsService {
 					if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
 					// @ts-ignore
 					this.funcs[appName][revisionName][key] = func.callback;
-					Logger.log(`Discovered func: ${key} bound to app: ${appName}`, `Functions`);
+					Logger.log(`Discovered func: ${key} on revision: ${revisionName}`, `Functions] [${appName}`);
 					if ((await this.functionModel.countDocuments({
 						appName, name: key,
 					})) === 0) {
@@ -87,12 +88,26 @@ export class FunctionsService {
 		});
 	}
 
+	private install(revision: RevisionInterface) {
+		return new Promise(resolve => {
+			exec('yarn', {
+				cwd: join(this.appsDir, revision.appName, revision.revision),
+			}, (err, stdout, stderr) => {
+				for (const line of stdout.split('\n'))
+					Logger.log(line, `Functions] [${revision.appName}] [${revision.revision}`);
+				resolve();
+			});
+		});
+	}
+
 	private async download() {
 		Logger.log(`Starting deployment process`, 'Delivery');
 		for (const doc of (await this.revisionModel.find({}).exec())) {
 			const revision: RevisionInterface = doc;
 			if (!existsSync(join(this.appsDir, revision.appName))) mkdirSync(join(this.appsDir, revision.appName));
 			if (!existsSync(join(this.appsDir, revision.appName, revision.revision))) await this.unzip(revision);
+			// tslint:disable-next-line:max-line-length
+			if (!existsSync(join(this.appsDir, revision.appName, revision.revision, 'node_modules'))) await this.install(revision);
 		}
 		await this.discoverFunctions();
 	}
