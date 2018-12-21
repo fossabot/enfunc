@@ -24,6 +24,3 @@ services:
 matrix:
   include:
     - NODE_VERSION: 8
-    - NODE_VERSION: 9
-    - NODE_VERSION: 10
-    - NODE_VERSION: 11
