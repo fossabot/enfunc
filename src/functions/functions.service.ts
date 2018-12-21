@@ -4,7 +4,7 @@ import { readdirSync, mkdirSync, createReadStream } from 'fs';
 import { Model } from 'mongoose';
 import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import * as Redis from 'ioredis';
 import { RevisionInterface } from './schemas/revision.schema';
 import { existsSync, createWriteStream } from 'fs';
@@ -13,13 +13,14 @@ import { tmpdir } from 'os';
 import { Extract } from 'unzipper';
 import * as fetch from 'download-file';
 import { exec } from 'child_process';
+import { GridFSBucket } from 'mongodb';
 
 @Injectable()
 export class FunctionsService {
 
 	// @ts-ignore
 	// tslint:disable-next-line:max-line-length
-	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>) { }
+	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>, @InjectConnection() private readonly connection: Connection) { }
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
@@ -78,14 +79,22 @@ export class FunctionsService {
 	private unzip(revision: RevisionInterface) {
 		return new Promise(resolve => {
 			mkdirSync(join(this.appsDir, revision.appName, revision.revision));
-			fetch(revision.url, {
-				directory: tmpdir(),
-				filename: `enfunc-rev-${revision.appName}-${revision.revision}.zip`,
-			}, (err) => {
+			const finish = () => {
 				createReadStream(join(tmpdir(), `enfunc-rev-${revision.appName}-${revision.revision}.zip`)).pipe(Extract({
 					path: join(this.appsDir, revision.appName, revision.revision),
 				})).promise().then(() => resolve());
-			});
+			};
+			if (revision.url.startsWith('database://')) {
+				(new GridFSBucket(this.connection.db))
+					.openDownloadStreamByName(revision.url.replace('database://', ''))
+					.pipe(createWriteStream(join(tmpdir(), `enfunc-rev-${revision.appName}-${revision.revision}.zip`))
+						.on('finish', () => finish()));
+			} else {
+				fetch(revision.url, {
+					directory: tmpdir(),
+					filename: `enfunc-rev-${revision.appName}-${revision.revision}.zip`,
+				}, (err) => finish());
+			}
 		});
 	}
 
