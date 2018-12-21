@@ -122,8 +122,18 @@ export class FunctionsService {
 		await this.discoverFunctions();
 	}
 
-	invoke(invocation: Invocation) {
-		return this.funcs[invocation.app]['1'][invocation.func](invocation.request, invocation.response);
+	async invoke(invocation: Invocation) {
+		const func = await this.functionModel.findOne({
+			appName: invocation.app,
+			name: invocation.func,
+		}).exec();
+		// @ts-ignore
+		invocation.request.env = (await this.revisionModel.findOne({
+			appName: invocation.app,
+			revision: func.revision,
+		}).exec()).env;
+		// tslint:disable-next-line:max-line-length
+		return await this.funcs[invocation.app][func.revision][invocation.func](invocation.request, invocation.response);
 	}
 
 	async synchronize(revision: RevisionInterface) {

@@ -11,6 +11,7 @@ export class RevisionInterface {
 	tags: object;
 	@IsNotEmpty()
 	url: string;
+	env: object;
 }
 
 export const RevisionSchema = new mongoose.Schema({
@@ -19,4 +20,5 @@ export const RevisionSchema = new mongoose.Schema({
 	appName: String,
 	tags: Object,
 	url: String,
+	env: Object,
 });
