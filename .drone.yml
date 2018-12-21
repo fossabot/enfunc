@@ -9,7 +9,7 @@ pipeline:
     environment:
       - DOCKER_HOST=tcp://docker:2375
     commands:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
       - docker build --tls=false -t enteam/enfunc:build-$DRONE_COMMIT_SHA .
       - if [[ "$DRONE_COMMIT_SHA" == "master" ]]; then docker tag enteam/enfunc:build-$DRONE_COMMIT_SHA enteam/enfunc --tls=false; fi
       - docker push enteam/enfunc:build-$DRONE_COMMIT_SHA --tls=false
