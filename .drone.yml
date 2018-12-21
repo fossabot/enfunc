@@ -4,10 +4,23 @@ pipeline:
     commands:
       - yarn
       - yarn test
+  publish_build:
+    image: plugins/docker
+    repo: enteam/enfunc
+    secrets: [ docker_username, docker_password ]
+    tag: [ build-$DRONE_COMMIT_SHA ]
+    when:
+      event: push
+
+  publish_master:
+    image: plugins/docker
+    repo: enteam/enfunc
+    secrets: [ docker_username, docker_password ]
+    tag: [ latest ]
+    when:
+      branch: master
+      event: push
 
 matrix:
   include:
     - NODE_VERSION: 8
-    - NODE_VERSION: 9
-    - NODE_VERSION: 10
-    - NODE_VERSION: 11
