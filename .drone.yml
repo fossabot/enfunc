@@ -10,7 +10,6 @@ pipeline:
     secrets: [ docker_username, docker_password ]
     tag: [ build-$DRONE_COMMIT_SHA ]
     when:
-      branch: master
       event: push
 
   publish_master:
