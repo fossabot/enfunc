@@ -32,6 +32,7 @@ export class FunctionsService {
 		this.appsDir = join(process.cwd(), process.env.APPS_DIR);
 		Logger.log(`Discovered functions dir: ${this.appsDir}`, 'Functions');
 		await this.connectToRedis();
+		await this.download();
 		await this.discoverFunctions();
 	}
 
