@@ -4,7 +4,7 @@ import { readdirSync, mkdirSync, createReadStream } from 'fs';
 import { Model } from 'mongoose';
 import { FunctionInterface } from './schemas/function.schema';
 import { Invocation } from './models/invocation.model';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import * as Redis from 'ioredis';
 import { RevisionInterface } from './schemas/revision.schema';
 import { existsSync, createWriteStream } from 'fs';
@@ -13,13 +13,15 @@ import { tmpdir } from 'os';
 import { Extract } from 'unzipper';
 import * as fetch from 'download-file';
 import { exec } from 'child_process';
+import { GridFSBucket } from 'mongodb';
+import * as rimraf from 'rimraf';
 
 @Injectable()
 export class FunctionsService {
 
 	// @ts-ignore
 	// tslint:disable-next-line:max-line-length
-	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>) { }
+	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>, @InjectConnection() private readonly connection: Connection) { }
 
 	private funcs: object = {};
 	private redis: Redis.Redis;
@@ -78,14 +80,22 @@ export class FunctionsService {
 	private unzip(revision: RevisionInterface) {
 		return new Promise(resolve => {
 			mkdirSync(join(this.appsDir, revision.appName, revision.revision));
-			fetch(revision.url, {
-				directory: tmpdir(),
-				filename: `enfunc-rev-${revision.appName}-${revision.revision}.zip`,
-			}, (err) => {
+			const finish = () => {
 				createReadStream(join(tmpdir(), `enfunc-rev-${revision.appName}-${revision.revision}.zip`)).pipe(Extract({
 					path: join(this.appsDir, revision.appName, revision.revision),
 				})).promise().then(() => resolve());
-			});
+			};
+			if (revision.url.startsWith('database://')) {
+				(new GridFSBucket(this.connection.db))
+					.openDownloadStreamByName(revision.url.replace('database://', ''))
+					.pipe(createWriteStream(join(tmpdir(), `enfunc-rev-${revision.appName}-${revision.revision}.zip`))
+						.on('finish', () => finish()));
+			} else {
+				fetch(revision.url, {
+					directory: tmpdir(),
+					filename: `enfunc-rev-${revision.appName}-${revision.revision}.zip`,
+				}, (err) => finish());
+			}
 		});
 	}
 
@@ -113,8 +123,18 @@ export class FunctionsService {
 		await this.discoverFunctions();
 	}
 
-	invoke(invocation: Invocation) {
-		return this.funcs[invocation.app]['1'][invocation.func](invocation.request, invocation.response);
+	async invoke(invocation: Invocation) {
+		const func = await this.functionModel.findOne({
+			appName: invocation.app,
+			name: invocation.func,
+		}).exec();
+		// @ts-ignore
+		invocation.request.env = (await this.revisionModel.findOne({
+			appName: invocation.app,
+			revision: func.revision,
+		}).exec()).env;
+		// tslint:disable-next-line:max-line-length
+		return await this.funcs[invocation.app][func.revision][invocation.func](invocation.request, invocation.response);
 	}
 
 	async synchronize(revision: RevisionInterface) {
@@ -130,5 +150,27 @@ export class FunctionsService {
 
 	async deploy() {
 		await this.discoverFunctions();
+	}
+
+	async readFunctions() {
+		return await this.functionModel.find({}).exec();
+	}
+
+	async updateFunction(id: string, document: object) {
+		await this.functionModel.updateOne({
+			_id: id,
+		}, document);
+		return document;
+	}
+
+	async deleteApp(name: string) {
+		console.log(join(this.appsDir, name));
+		await this.removeDirectory(join(this.appsDir, name));
+		await this.discoverFunctions();
+		return {};
+	}
+
+	removeDirectory(path: string) {
+		return new Promise(resolve => rimraf(path, () => resolve()));
 	}
 }
