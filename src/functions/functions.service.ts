@@ -150,4 +150,15 @@ export class FunctionsService {
 	async deploy() {
 		await this.discoverFunctions();
 	}
+
+	async readFunctions() {
+		return await this.functionModel.find({}).exec();
+	}
+
+	async updateFunction(id: string, document: object) {
+		await this.functionModel.updateOne({
+			_id: id,
+		}, document);
+		return document;
+	}
 }

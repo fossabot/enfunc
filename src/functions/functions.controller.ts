@@ -1,5 +1,5 @@
 // tslint:disable-next-line:max-line-length
-import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get } from '@nestjs/common';
+import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get, Put, Patch } from '@nestjs/common';
 import * as express from 'express';
 import { FunctionsService } from './functions.service';
 import { RevisionInterface } from './schemas/revision.schema';
@@ -70,6 +70,17 @@ export class FunctionsController {
 			status: true,
 			message: 'Deployment has been started',
 		};
+	}
+
+	@Get()
+	async readFunctions() {
+		return await this.functionsService.readFunctions();
+	}
+
+	@Put(':id')
+	@Patch(':id')
+	async updateFunction(@Param('id') id: string, @Body() document: object) {
+		return await this.functionsService.updateFunction(id, document);
 	}
 
 }
