@@ -14,6 +14,7 @@ import { Extract } from 'unzipper';
 import * as fetch from 'download-file';
 import { exec } from 'child_process';
 import { GridFSBucket } from 'mongodb';
+import * as rimraf from 'rimraf';
 
 @Injectable()
 export class FunctionsService {
@@ -160,5 +161,16 @@ export class FunctionsService {
 			_id: id,
 		}, document);
 		return document;
+	}
+
+	async deleteApp(name: string) {
+		console.log(join(this.appsDir, name));
+		await this.removeDirectory(join(this.appsDir, name));
+		await this.discoverFunctions();
+		return {};
+	}
+
+	removeDirectory(path: string) {
+		return new Promise(resolve => rimraf(path, () => resolve()));
 	}
 }

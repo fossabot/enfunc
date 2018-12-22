@@ -1,5 +1,5 @@
 // tslint:disable-next-line:max-line-length
-import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get, Put, Patch } from '@nestjs/common';
+import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get, Put, Patch, Delete } from '@nestjs/common';
 import * as express from 'express';
 import { FunctionsService } from './functions.service';
 import { RevisionInterface } from './schemas/revision.schema';
@@ -83,4 +83,8 @@ export class FunctionsController {
 		return await this.functionsService.updateFunction(id, document);
 	}
 
+	@Delete('/apps/:name')
+	async deleteApp(@Param('name') name: string) {
+		return await this.functionsService.deleteApp(name);
+	}
 }
