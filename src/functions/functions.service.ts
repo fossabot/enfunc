@@ -49,30 +49,32 @@ export class FunctionsService {
 		for (const appName of appNames) {
 			const revisionNames = readdirSync(join(this.appsDir, appName));
 			for (const revisionName of revisionNames) {
-				const appIndex = require(join(this.appsDir, appName, revisionName, 'src', 'index.js'));
-				for (const [key, func] of Object.entries(appIndex)) {
-					if (this.funcs[appName] == null) this.funcs[appName] = {};
-					if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
-					// @ts-ignore
-					this.funcs[appName][revisionName][key] = func.callback;
-					Logger.log(`Discovered func: ${key} on revision: ${revisionName}`, `Functions] [${appName}`);
-					if ((await this.functionModel.countDocuments({
-						appName, name: key,
-					})) === 0) {
-						const f = new this.functionModel({
-							name: key,
-							revision: revisionName,
-							appName,
-						});
-						await f.save();
-						ids.push(f._id.toString());
-					} else {
-						const f = await this.functionModel.findOne({
+				try {
+					const appIndex = require(join(this.appsDir, appName, revisionName, 'src', 'index.js'));
+					for (const [key, func] of Object.entries(appIndex)) {
+						if (this.funcs[appName] == null) this.funcs[appName] = {};
+						if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
+						// @ts-ignore
+						this.funcs[appName][revisionName][key] = func.callback;
+						Logger.log(`Discovered func: ${key} on revision: ${revisionName}`, `Functions] [${appName}`);
+						if ((await this.functionModel.countDocuments({
 							appName, name: key,
-						});
-						ids.push(f._id.toString());
+						})) === 0) {
+							const f = new this.functionModel({
+								name: key,
+								revision: revisionName,
+								appName,
+							});
+							await f.save();
+							ids.push(f._id.toString());
+						} else {
+							const f = await this.functionModel.findOne({
+								appName, name: key,
+							});
+							ids.push(f._id.toString());
+						}
 					}
-				}
+				} catch (err) { }
 			}
 		}
 		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
