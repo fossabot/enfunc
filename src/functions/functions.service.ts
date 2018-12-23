@@ -74,7 +74,9 @@ export class FunctionsService {
 							ids.push(f._id.toString());
 						}
 					}
-				} catch (err) { }
+				} catch (err) {
+					Logger.error(err, `Functions] [${appName}`);
+				}
 			}
 		}
 		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
