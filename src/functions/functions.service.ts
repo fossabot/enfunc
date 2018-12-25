@@ -55,8 +55,13 @@ export class FunctionsService {
 						if (this.funcs[appName] == null) this.funcs[appName] = {};
 						if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
 						// @ts-ignore
-						this.funcs[appName][revisionName][key] = func.callback;
+						this.funcs[appName][revisionName][key] = func;
 						Logger.log(`Discovered func: ${key} on revision: ${revisionName}`, `Functions] [${appName}`);
+						// @ts-ignore
+						if (func.type === 'app') {
+							// @ts-ignore
+							Logger.log(`Discovered app on revision: ${revisionName}`, `Functions] [${appName}`);
+						}
 						if ((await this.functionModel.countDocuments({
 							appName, name: key,
 						})) === 0) {
@@ -65,12 +70,15 @@ export class FunctionsService {
 								revision: revisionName,
 								appName,
 							});
+							// @ts-ignore
 							await f.save();
+							// @ts-ignore
 							ids.push(f._id.toString());
 						} else {
 							const f = await this.functionModel.findOne({
 								appName, name: key,
 							});
+							// @ts-ignore
 							ids.push(f._id.toString());
 						}
 					}
@@ -79,6 +87,7 @@ export class FunctionsService {
 				}
 			}
 		}
+		// @ts-ignore
 		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
 	}
 
@@ -139,7 +148,12 @@ export class FunctionsService {
 			revision: func.revision,
 		}).exec()).env;
 		// tslint:disable-next-line:max-line-length
-		return await this.funcs[invocation.app][func.revision][invocation.func](invocation.request, invocation.response);
+		if (this.funcs[invocation.app][func.revision][invocation.func].type == null || this.funcs[invocation.app][func.revision][invocation.func].type === 'callback') {
+			return await this.funcs[invocation.app][func.revision][invocation.func].callback(invocation.request, invocation.response);
+		} else if (this.funcs[invocation.app][func.revision][invocation.func].type === 'app') {
+			// tslint:disable-next-line:max-line-length
+			return await this.funcs[invocation.app][func.revision][invocation.func].callback.handle(invocation.request, invocation.response);
+		}
 	}
 
 	async synchronize(revision: RevisionInterface) {
@@ -148,6 +162,7 @@ export class FunctionsService {
 			revision: revision.revision,
 		})) > 0) return { status: false, message: 'Deployment duplication detected' };
 		const rev = new this.revisionModel(revision);
+		// @ts-ignore
 		await rev.save();
 		this.publisher.publish('deployments', '');
 		return rev;
@@ -169,7 +184,6 @@ export class FunctionsService {
 	}
 
 	async deleteApp(name: string) {
-		console.log(join(this.appsDir, name));
 		await this.removeDirectory(join(this.appsDir, name));
 		await this.discoverFunctions();
 		return {};
