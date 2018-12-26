@@ -210,4 +210,12 @@ export class FunctionsService {
 	removeDirectory(path: string) {
 		return new Promise(resolve => rimraf(path, () => resolve()));
 	}
+
+	async isReady(appName: string, functionName: string, revision: string) {
+		try {
+			return this.funcs[appName][revision][functionName] != null;
+		} catch (err) {
+			return false;
+		}
+	}
 }
