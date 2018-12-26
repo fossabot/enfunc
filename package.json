@@ -1,6 +1,6 @@
 {
   "name": "enfunc-runtime",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "High-availability distributed Function as a Service solution for building scalable apps and rest apis",
   "author": "Mateusz Woźniak <matisiek11@gmail.com>",
   "license": "MIT",
