@@ -2,7 +2,7 @@ import * as mongoose from 'mongoose';
 import { ObjectID } from 'bson';
 
 export interface FunctionInterface {
-	id: string,
+	id: string;
 	name: string;
 	revision: string;
 	appName: string;

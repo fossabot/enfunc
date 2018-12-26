@@ -15,12 +15,12 @@ import * as fetch from 'download-file';
 import { exec } from 'child_process';
 import { GridFSBucket } from 'mongodb';
 import * as rimraf from 'rimraf';
+import * as Queue from 'bull';
 
 @Injectable()
 export class FunctionsService {
 
 	// @ts-ignore
-	// tslint:disable-next-line:max-line-length
 	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>, @InjectConnection() private readonly connection: Connection) { }
 
 	private funcs: object = {};
@@ -39,8 +39,8 @@ export class FunctionsService {
 	private async connectToRedis() {
 		this.redis = new Redis(process.env.REDIS_URI);
 		this.publisher = new Redis(process.env.REDIS_URI);
-		this.redis.on('message', () => this.download());
-		this.redis.subscribe('deployments', (err, count) => { });
+		this.redis.on('message', (channel, msg) => channel === 'deployments' ? this.download() : this.deleteApp(JSON.parse(msg).name));
+		this.redis.subscribe('deployments', 'deletions', (err, count) => { });
 	}
 
 	private async discoverFunctions() {
@@ -55,8 +55,22 @@ export class FunctionsService {
 						if (this.funcs[appName] == null) this.funcs[appName] = {};
 						if (this.funcs[appName][revisionName] == null) this.funcs[appName][revisionName] = {};
 						// @ts-ignore
-						this.funcs[appName][revisionName][key] = func.callback;
+						this.funcs[appName][revisionName][key] = func;
 						Logger.log(`Discovered func: ${key} on revision: ${revisionName}`, `Functions] [${appName}`);
+						// @ts-ignore
+						if (func.type === 'app') {
+							// @ts-ignore
+							Logger.log(`Discovered app on revision: ${revisionName}`, `Functions] [${appName}`);
+						}
+						// @ts-ignore
+						if (func.type === 'job') {
+							// @ts-ignore
+							const queue = new Queue(`R-${revisionName}-${func.event}`, process.env.REDIS_URI);
+							// @ts-ignore
+							queue.process(func.callback);
+							// @ts-ignore
+							Logger.log(`Discovered job on revision: ${revisionName}`, `Functions] [${appName}`);
+						}
 						if ((await this.functionModel.countDocuments({
 							appName, name: key,
 						})) === 0) {
@@ -65,12 +79,15 @@ export class FunctionsService {
 								revision: revisionName,
 								appName,
 							});
+							// @ts-ignore
 							await f.save();
+							// @ts-ignore
 							ids.push(f._id.toString());
 						} else {
 							const f = await this.functionModel.findOne({
 								appName, name: key,
 							});
+							// @ts-ignore
 							ids.push(f._id.toString());
 						}
 					}
@@ -79,6 +96,7 @@ export class FunctionsService {
 				}
 			}
 		}
+		// @ts-ignore
 		for (const f of (await (this.functionModel.find({}).exec()))) if (!ids.includes(f._id.toString())) await f.remove();
 	}
 
@@ -122,7 +140,6 @@ export class FunctionsService {
 			const revision: RevisionInterface = doc;
 			if (!existsSync(join(this.appsDir, revision.appName))) mkdirSync(join(this.appsDir, revision.appName));
 			if (!existsSync(join(this.appsDir, revision.appName, revision.revision))) await this.unzip(revision);
-			// tslint:disable-next-line:max-line-length
 			if (!existsSync(join(this.appsDir, revision.appName, revision.revision, 'node_modules'))) await this.install(revision);
 		}
 		await this.discoverFunctions();
@@ -138,8 +155,16 @@ export class FunctionsService {
 			appName: invocation.app,
 			revision: func.revision,
 		}).exec()).env;
-		// tslint:disable-next-line:max-line-length
-		return await this.funcs[invocation.app][func.revision][invocation.func](invocation.request, invocation.response);
+		// @ts-ignore
+		invocation.request.enqueue = async (name, payload) => {
+			const queue = new Queue(`R-${func.revision}-${name}`, process.env.REDIS_URI);
+			queue.add(payload);
+		};
+		if (this.funcs[invocation.app][func.revision][invocation.func].type == null || this.funcs[invocation.app][func.revision][invocation.func].type === 'callback') {
+			return await this.funcs[invocation.app][func.revision][invocation.func].callback(invocation.request, invocation.response);
+		} else if (this.funcs[invocation.app][func.revision][invocation.func].type === 'app') {
+			return await this.funcs[invocation.app][func.revision][invocation.func].callback.handle(invocation.request, invocation.response);
+		}
 	}
 
 	async synchronize(revision: RevisionInterface) {
@@ -148,6 +173,7 @@ export class FunctionsService {
 			revision: revision.revision,
 		})) > 0) return { status: false, message: 'Deployment duplication detected' };
 		const rev = new this.revisionModel(revision);
+		// @ts-ignore
 		await rev.save();
 		this.publisher.publish('deployments', '');
 		return rev;
@@ -169,10 +195,16 @@ export class FunctionsService {
 	}
 
 	async deleteApp(name: string) {
-		console.log(join(this.appsDir, name));
 		await this.removeDirectory(join(this.appsDir, name));
 		await this.discoverFunctions();
 		return {};
+	}
+
+	async enqueueAppDeletion(name: string) {
+		await this.revisionModel.deleteMany({
+			appName: name,
+		});
+		this.publisher.publish('deletions', JSON.stringify({ name }));
 	}
 
 	removeDirectory(path: string) {
