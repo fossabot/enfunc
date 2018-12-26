@@ -81,4 +81,3 @@ typings/
 
 apps/
 yarn.lock
-dist/

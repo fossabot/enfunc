@@ -5,6 +5,6 @@ import { Observable, of } from 'rxjs';
 export class FunctionsGateway {
   @SubscribeMessage('message')
   onEvent(client: any, payload: any): Observable<WsResponse<any>> {
-    return of({});
+    return null;
   }
 }
