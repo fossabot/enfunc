@@ -1,5 +1,5 @@
 // tslint:disable-next-line:max-line-length
-import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get, Put, Patch, Delete } from '@nestjs/common';
+import { Controller, All, Param, Req, Res, Body, FileInterceptor, Post, UseInterceptors, UploadedFile, Get, Put, Patch, Delete, UnauthorizedException, UseGuards } from '@nestjs/common';
 import * as express from 'express';
 import { FunctionsService } from './functions.service';
 import { RevisionInterface } from './schemas/revision.schema';
@@ -8,6 +8,7 @@ import { Connection } from 'mongoose';
 import { GridFSBucket } from 'mongodb';
 import { createReadStream } from 'streamifier';
 import { generate } from 'shortid';
+import { ServiceKeysGuard } from './service-keys.guard';
 
 @Controller('functions')
 export class FunctionsController {
@@ -36,12 +37,14 @@ export class FunctionsController {
 	}
 
 	@Post('/sync')
+	@UseGuards(ServiceKeysGuard)
 	async synchronize(@Body() revision: RevisionInterface) {
 		return await this.functionsService.synchronize(revision);
 	}
 
 	@Post('/upload')
 	@UseInterceptors(FileInterceptor('file'))
+	@UseGuards(ServiceKeysGuard)
 	async upload(@UploadedFile() file) {
 		const id = generate();
 		await this.store(file, id);
@@ -54,6 +57,7 @@ export class FunctionsController {
 	}
 
 	@Get('/files/:id')
+	@UseGuards(ServiceKeysGuard)
 	get(@Param('id') id, @Res() res) {
 		this.bucket.openDownloadStreamByName(id).pipe(res);
 	}
@@ -64,6 +68,7 @@ export class FunctionsController {
 	}
 
 	@Post('/deploy')
+	@UseGuards(ServiceKeysGuard)
 	async deploy() {
 		await this.functionsService.deploy();
 		return {
@@ -73,17 +78,20 @@ export class FunctionsController {
 	}
 
 	@Get()
+	@UseGuards(ServiceKeysGuard)
 	async readFunctions() {
 		return await this.functionsService.readFunctions();
 	}
 
 	@Put(':id')
 	@Patch(':id')
+	@UseGuards(ServiceKeysGuard)
 	async updateFunction(@Param('id') id: string, @Body() document: object) {
 		return await this.functionsService.updateFunction(id, document);
 	}
 
 	@Delete('/apps/:name')
+	@UseGuards(ServiceKeysGuard)
 	async deleteApp(@Param('name') name: string) {
 		return await this.functionsService.enqueueAppDeletion(name);
 	}
