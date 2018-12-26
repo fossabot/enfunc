@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { join } from 'path';
 import { readdirSync, mkdirSync, createReadStream } from 'fs';
 import { Model } from 'mongoose';
@@ -27,6 +27,9 @@ export class FunctionsService {
 	private redis: Redis.Redis;
 	private publisher: Redis.Redis;
 	private appsDir: string;
+	private readinesses: number = 0;
+	private downtimes: number = 0;
+	private readinessBlocked: boolean = false;
 
 	async onModuleInit() {
 		this.appsDir = join(process.cwd(), process.env.APPS_DIR);
@@ -39,8 +42,18 @@ export class FunctionsService {
 	private async connectToRedis() {
 		this.redis = new Redis(process.env.REDIS_URI);
 		this.publisher = new Redis(process.env.REDIS_URI);
-		this.redis.on('message', (channel, msg) => channel === 'deployments' ? this.download() : this.deleteApp(JSON.parse(msg).name));
-		this.redis.subscribe('deployments', 'deletions', (err, count) => { });
+		this.redis.on('message', (channel, msg) => channel === 'deployments' ? this.download() : (channel === 'deletions' ? this.deleteApp(JSON.parse(msg).name) : (channel === 'readiness_checks' ? this.checkReadiness(JSON.parse(msg)) : this.incrementReadinesses(JSON.parse(msg)))));
+		this.redis.subscribe('deployments', 'deletions', 'readiness_checks_responses', 'readiness_checks', (err, count) => { });
+	}
+
+	checkReadiness(payload) {
+		this.publisher.publish('readiness_checks_responses', JSON.stringify({
+			success: this.isReady(payload.app, payload.function, payload.revision),
+		}));
+	}
+
+	incrementReadinesses(payload) {
+		if (payload.success) this.readinesses++; else this.downtimes++;
 	}
 
 	private async discoverFunctions() {
@@ -211,7 +224,33 @@ export class FunctionsService {
 		return new Promise(resolve => rimraf(path, () => resolve()));
 	}
 
-	async isReady(appName: string, functionName: string, revision: string) {
+	async checkGlobalReadiness(appName: string, functionName: string, revision: string) {
+		if (this.readinessBlocked) {
+			throw new ForbiddenException();
+		}
+		this.publisher.publish('readiness_checks', JSON.stringify({
+			app: appName,
+			function: functionName,
+			revision,
+		}));
+		this.readinessBlocked = true;
+		await this.timeout(3000);
+		const readinesses = this.readinesses;
+		const downtimes = this.downtimes;
+		this.readinessBlocked = false;
+		this.readinesses = 0;
+		this.downtimes = 0;
+		return {
+			ready: readinesses,
+			notReady: downtimes,
+		};
+	}
+
+	timeout(ms: number) {
+		return new Promise(resolve => setTimeout(() => resolve(), ms));
+	}
+
+	isReady(appName: string, functionName: string, revision: string) {
 		try {
 			return this.funcs[appName][revision][functionName] != null;
 		} catch (err) {

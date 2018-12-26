@@ -100,6 +100,6 @@ export class FunctionsController {
 	@UseGuards(ServiceKeysGuard)
 	async isReady(@Param('app') app: string,
 		@Param('function') func: string, @Param('revision') revision: string) {
-		return this.functionsService.isReady(app, func, revision);
+		return await this.functionsService.checkGlobalReadiness(app, func, revision);
 	}
 }
