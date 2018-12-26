@@ -21,7 +21,6 @@ import * as Queue from 'bull';
 export class FunctionsService {
 
 	// @ts-ignore
-	// tslint:disable-next-line:max-line-length
 	constructor(@InjectModel('Function') private readonly functionModel: Model<FunctionInterface>, @InjectModel('Revision') private readonly revisionModel: Model<RevisionInterface>, @InjectConnection() private readonly connection: Connection) { }
 
 	private funcs: object = {};
@@ -64,7 +63,7 @@ export class FunctionsService {
 							Logger.log(`Discovered app on revision: ${revisionName}`, `Functions] [${appName}`);
 						}
 						if (func.type === 'job') {
-							const queue = new Queue(func.event, process.env.REDIS_URI);
+							const queue = new Queue(`R-${revisionName}-${func.event}`, process.env.REDIS_URI);
 							queue.process(func.callback);
 							// @ts-ignore
 							Logger.log(`Discovered job on revision: ${revisionName}`, `Functions] [${appName}`);
@@ -138,7 +137,6 @@ export class FunctionsService {
 			const revision: RevisionInterface = doc;
 			if (!existsSync(join(this.appsDir, revision.appName))) mkdirSync(join(this.appsDir, revision.appName));
 			if (!existsSync(join(this.appsDir, revision.appName, revision.revision))) await this.unzip(revision);
-			// tslint:disable-next-line:max-line-length
 			if (!existsSync(join(this.appsDir, revision.appName, revision.revision, 'node_modules'))) await this.install(revision);
 		}
 		await this.discoverFunctions();
@@ -156,14 +154,12 @@ export class FunctionsService {
 		}).exec()).env;
 		// @ts-ignore
 		invocation.request.enqueue = async (name, payload) => {
-			const queue = new Queue(name, process.env.REDIS_URI);
+			const queue = new Queue(`R-${func.revision}-${name}`, process.env.REDIS_URI);
 			queue.add(payload);
 		}
-		// tslint:disable-next-line:max-line-length
 		if (this.funcs[invocation.app][func.revision][invocation.func].type == null || this.funcs[invocation.app][func.revision][invocation.func].type === 'callback') {
 			return await this.funcs[invocation.app][func.revision][invocation.func].callback(invocation.request, invocation.response);
 		} else if (this.funcs[invocation.app][func.revision][invocation.func].type === 'app') {
-			// tslint:disable-next-line:max-line-length
 			return await this.funcs[invocation.app][func.revision][invocation.func].callback.handle(invocation.request, invocation.response);
 		}
 	}
