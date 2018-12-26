@@ -15,6 +15,7 @@ import * as fetch from 'download-file';
 import { exec } from 'child_process';
 import { GridFSBucket } from 'mongodb';
 import * as rimraf from 'rimraf';
+import * as Queue from 'bull';
 
 @Injectable()
 export class FunctionsService {
@@ -61,6 +62,12 @@ export class FunctionsService {
 						if (func.type === 'app') {
 							// @ts-ignore
 							Logger.log(`Discovered app on revision: ${revisionName}`, `Functions] [${appName}`);
+						}
+						if (func.type === 'job') {
+							const queue = new Queue(func.event, process.env.REDIS_URI);
+							queue.process(func.callback);
+							// @ts-ignore
+							Logger.log(`Discovered job on revision: ${revisionName}`, `Functions] [${appName}`);
 						}
 						if ((await this.functionModel.countDocuments({
 							appName, name: key,
@@ -147,6 +154,11 @@ export class FunctionsService {
 			appName: invocation.app,
 			revision: func.revision,
 		}).exec()).env;
+		// @ts-ignore
+		invocation.request.enqueue = async (name, payload) => {
+			const queue = new Queue(name, process.env.REDIS_URI);
+			queue.add(payload);
+		}
 		// tslint:disable-next-line:max-line-length
 		if (this.funcs[invocation.app][func.revision][invocation.func].type == null || this.funcs[invocation.app][func.revision][invocation.func].type === 'callback') {
 			return await this.funcs[invocation.app][func.revision][invocation.func].callback(invocation.request, invocation.response);
