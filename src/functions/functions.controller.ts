@@ -85,6 +85,6 @@ export class FunctionsController {
 
 	@Delete('/apps/:name')
 	async deleteApp(@Param('name') name: string) {
-		return await this.functionsService.deleteApp(name);
+		return await this.functionsService.enqueueAppDeletion(name);
 	}
 }

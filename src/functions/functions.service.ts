@@ -39,8 +39,8 @@ export class FunctionsService {
 	private async connectToRedis() {
 		this.redis = new Redis(process.env.REDIS_URI);
 		this.publisher = new Redis(process.env.REDIS_URI);
-		this.redis.on('message', () => this.download());
-		this.redis.subscribe('deployments', (err, count) => { });
+		this.redis.on('message', (channel, msg) => channel === 'deployments' ? this.download() : this.deleteApp(JSON.parse(msg).name));
+		this.redis.subscribe('deployments', 'deletions', (err, count) => { });
 	}
 
 	private async discoverFunctions() {
@@ -62,8 +62,11 @@ export class FunctionsService {
 							// @ts-ignore
 							Logger.log(`Discovered app on revision: ${revisionName}`, `Functions] [${appName}`);
 						}
+						// @ts-ignore
 						if (func.type === 'job') {
+							// @ts-ignore
 							const queue = new Queue(`R-${revisionName}-${func.event}`, process.env.REDIS_URI);
+							// @ts-ignore
 							queue.process(func.callback);
 							// @ts-ignore
 							Logger.log(`Discovered job on revision: ${revisionName}`, `Functions] [${appName}`);
@@ -156,7 +159,7 @@ export class FunctionsService {
 		invocation.request.enqueue = async (name, payload) => {
 			const queue = new Queue(`R-${func.revision}-${name}`, process.env.REDIS_URI);
 			queue.add(payload);
-		}
+		};
 		if (this.funcs[invocation.app][func.revision][invocation.func].type == null || this.funcs[invocation.app][func.revision][invocation.func].type === 'callback') {
 			return await this.funcs[invocation.app][func.revision][invocation.func].callback(invocation.request, invocation.response);
 		} else if (this.funcs[invocation.app][func.revision][invocation.func].type === 'app') {
@@ -195,6 +198,13 @@ export class FunctionsService {
 		await this.removeDirectory(join(this.appsDir, name));
 		await this.discoverFunctions();
 		return {};
+	}
+
+	async enqueueAppDeletion(name: string) {
+		await this.revisionModel.deleteMany({
+			appName: name,
+		});
+		this.publisher.publish('deletions', JSON.stringify({ name }));
 	}
 
 	removeDirectory(path: string) {
