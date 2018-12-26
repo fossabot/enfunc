@@ -6,7 +6,7 @@ export class ServiceKeysGuard implements CanActivate {
 	canActivate(
 		context: ExecutionContext,
 	): boolean | Promise<boolean> | Observable<boolean> {
-		if (context.switchToHttp().getRequest().headers['X-enfunc-service-key'] !== (process.env.SERVICE_KEY || '1234')) throw new UnauthorizedException();
+		if (context.switchToHttp().getRequest().get('X-enfunc-service-key') !== (process.env.SERVICE_KEY || '1234')) throw new UnauthorizedException();
 		return true;
 	}
 }
