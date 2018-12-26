@@ -95,4 +95,11 @@ export class FunctionsController {
 	async deleteApp(@Param('name') name: string) {
 		return await this.functionsService.enqueueAppDeletion(name);
 	}
+
+	@Get('/ready/:app/:function/:revision')
+	@UseGuards(ServiceKeysGuard)
+	async isReady(@Param('app') app: string,
+		@Param('function') func: string, @Param('revision') revision: string) {
+		return await this.functionsService.checkGlobalReadiness(app, func, revision);
+	}
 }
