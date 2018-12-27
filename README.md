@@ -9,3 +9,32 @@
 [![](https://img.shields.io/docker/stars/enteam/enfunc.svg)](https://hub.docker.com/r/enteam/enfunc/)
 [![](https://img.shields.io/github/license/enteam/enfunc.svg)](https://github.com/enteam/enfunc)
 [![](https://img.shields.io/github/issues/enteam/enfunc.svg)](https://github.com/enteam/enfunc)
+
+Open-source self-hosted serverless experience with high-availability power-up's
+
+## :rocket: Quick start
+```
+# install in on the cluster
+wget https://raw.githubusercontent.com/enteam/enfunc/readme/docker-compose.yml
+docker-compose up -d
+```
+*Deploy the your first serverless app in seconds*
+```
+# install the enfunc-cli
+yarn global add enfunc-cli
+```
+Create new app
+```
+# create new npm project
+```
+Then, you can write some cloud functions code!
+```
+// src/index.js
+const runtime = require('./runtime.js');
+module.exports.helloWorld = runtime.functions.onRequest(async (req, res) => {
+  res.json({
+    message: 'Hello World!'
+  })
+});
+```
+The `runtime.js` file you can grab from https://raw.githubusercontent.com/enteam/enfunc/master/runtime.js
