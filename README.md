@@ -28,7 +28,7 @@ Create new app
 # create new npm project
 ```
 Then, you can write some cloud functions code!
-```
+```javascript
 // src/index.js
 const runtime = require('./runtime.js');
 module.exports.helloWorld = runtime.functions.onRequest(async (req, res) => {
@@ -38,3 +38,9 @@ module.exports.helloWorld = runtime.functions.onRequest(async (req, res) => {
 });
 ```
 The `runtime.js` file you can grab from https://raw.githubusercontent.com/enteam/enfunc/master/runtime.js
+```
+# Deploy your app
+export ENFUNC_HOST=http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort> # without a trailing slash
+enfunc deploy --app my-first-app
+```
+And... Yup! Your first serverless enfunc app is accessible from `http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort>/functions/invoke/my-first-app/helloWorld`
