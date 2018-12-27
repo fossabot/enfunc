@@ -5,6 +5,7 @@
 
 [![Build Status](https://travis-ci.com/enteam/enfunc.svg?branch=master)](https://travis-ci.com/enteam/enfunc)
 [![Build Status](https://travis-ci.com/enteam/enfunc.svg?branch=master)](https://travis-ci.com/enteam/enfunc)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fenteam%2Fenfunc.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fenteam%2Fenfunc?ref=badge_shield)
 [![](https://img.shields.io/docker/pulls/enteam/enfunc.svg)](https://hub.docker.com/r/enteam/enfunc/)
 [![](https://img.shields.io/docker/stars/enteam/enfunc.svg)](https://hub.docker.com/r/enteam/enfunc/)
 [![](https://img.shields.io/github/license/enteam/enfunc.svg)](https://github.com/enteam/enfunc)
@@ -45,3 +46,7 @@ enfunc deploy --app my-first-app
 ```
 And... Yup! Your first serverless enfunc app is accessible from 
 `http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort>/functions/invoke/my-first-app/helloWorld`
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fenteam%2Fenfunc.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fenteam%2Fenfunc?ref=badge_large)
