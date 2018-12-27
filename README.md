@@ -43,4 +43,5 @@ The `runtime.js` file you can grab from https://raw.githubusercontent.com/enteam
 export ENFUNC_HOST=http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort> # without a trailing slash
 enfunc deploy --app my-first-app
 ```
-And... Yup! Your first serverless enfunc app is accessible from `http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort>/functions/invoke/my-first-app/helloWorld`
+And... Yup! Your first serverless enfunc app is accessible from 
+`http://<yourEnfuncNodeAddress>:<yourEnfuncNodePort>/functions/invoke/my-first-app/helloWorld`
